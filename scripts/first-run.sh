@@ -35,4 +35,4 @@ sudo docker compose up -d
 echo
 echo ">> Server is starting. The first boot downloads the game server (a few minutes)."
 echo "   Watch it:   sudo docker compose logs -f      (Ctrl+C to stop watching)"
-echo "   Ready when the log says the server is listening on port 8211."
+echo "   Ready when 'sudo docker ps' shows (healthy) — about 3 minutes on first boot."

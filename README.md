@@ -38,7 +38,14 @@ unless you need remote access to it — it is protected only by the admin passwo
 
 ### 1.2 Install and start
 
-On the VM:
+On the VM. The repo is private, so log in to GitHub first (one time):
+
+```bash
+sudo apt-get update && sudo apt-get install -y gh   # Ubuntu 22.04+: if not found, see https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+gh auth login --hostname github.com --git-protocol https --web   # open the URL it shows, enter the code
+```
+
+Then:
 
 ```bash
 git clone https://github.com/FahmiKamarul/palworld-server.git ~/palworld-docker
@@ -48,6 +55,9 @@ nano .env                   # set ADMIN_PASSWORD, and DISCORD_WEBHOOK_URL (optio
 ./scripts/first-run.sh      # starts the server
 sudo docker compose logs -f # watch the first boot (downloads the game, takes a few minutes)
 ```
+
+Ready when `sudo docker ps` shows `(healthy)` for `palworld-server` (about 3 minutes on first boot).
+Check it answers: `sudo docker exec palworld-server rest-cli info`.
 
 Players connect to `<VM external IP>:8211`.
 
@@ -66,9 +76,10 @@ Run from the repo folder (`cd ~/palworld-docker`).
 | Stop | `sudo docker compose down` |
 | Restart | `sudo docker compose restart` |
 | Live logs | `sudo docker compose logs -f` |
-| Who's online | `sudo docker exec palworld-server rcon-cli ShowPlayers` |
-| Broadcast a message | `sudo docker exec palworld-server rcon-cli "Broadcast Hello_everyone"` |
-| Save the world now | `sudo docker exec palworld-server rcon-cli Save` |
+| Who's online | `sudo docker exec palworld-server rest-cli players` |
+| Server info (version, world ID) | `sudo docker exec palworld-server rest-cli info` |
+| Broadcast a message | `sudo docker exec palworld-server rest-cli announce '{"message":"Restarting in 5 min"}'` |
+| Save the world now | `sudo docker exec palworld-server rest-cli save` |
 | Make a backup now | `sudo docker exec palworld-server backup` |
 | Restore a backup (interactive) | `sudo docker exec -it palworld-server restore` |
 | Status | `sudo docker ps` |
