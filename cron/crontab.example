@@ -1,0 +1,11 @@
+# Host-side cron jobs (optional). Install with:   crontab -e   and paste the lines you want.
+# Check with: crontab -l
+#
+# The server's own cron jobs (daily backup, daily reboot, auto-update, deleting old
+# backups) run INSIDE the container and are configured in compose.yaml — see README.
+#
+# ┌ minute ┌ hour ┌ day-of-month ┌ month ┌ day-of-week
+# │        │      │              │       │
+# Upload last night's backup (made at 00:00) to Google Drive at 00:30.
+# Needs rclone with a remote named "gdrive" — see README "Upload backups to Google Drive".
+30 0 * * * rclone copy "$HOME/palworld-docker/palworld/backups" gdrive: --max-age 24h --log-file "$HOME/rclone-palworld.log"

@@ -1,0 +1,48 @@
+# Palworld dedicated server — https://github.com/thijsvanloef/palworld-server-docker
+# Secrets (admin password, Discord webhook) live in .env — copy .env.example to .env first.
+# After editing this file: sudo docker compose up -d   (recreates the container with the new settings)
+services:
+  palworld:
+    image: thijsvanloef/palworld-server-docker:latest
+    restart: unless-stopped
+    container_name: palworld-server
+    stop_grace_period: 30s
+    ports:
+      - "8211:8211/udp"   # game
+      - "27015:27015/udp" # Steam query
+      - "8212:8212/tcp"   # REST API
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - PORT=8211
+      - PLAYERS=32
+      - SERVER_NAME=My GCP Palworld Server
+      # For reference only — the image ignores this. The world that loads is set by
+      # DedicatedServerName in palworld/Pal/Saved/Config/LinuxServer/GameUserSettings.ini
+      # (scripts/import-save.sh sets it for you).
+      - WORLD_NAME=EE06B85E4DC2A986720DE58858DC1B33
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      - UPDATE_ON_BOOT=true
+      - ENABLE_PERF_THREADING_ARGS=true
+      - REST_API_ENABLED=true
+      - REST_API_PORT=8212
+
+      # --- Gameplay ---
+      - BUILD_OBJECT_DETERIORATION_DAMAGE_RATE=0.000000
+      - BASE_CAMP_WORKER_MAX_NUM=20
+      - BASE_CAMP_MAX_NUM_IN_GUILD=5
+      - BASE_CAMP_MAX_NUM=5
+      - ALLOW_GLOBAL_PALBOX_IMPORT=true
+
+      # --- Cron jobs (run inside the container, standard 5-field cron syntax) ---
+      - AUTO_REBOOT_ENABLED=true
+      - AUTO_REBOOT_CRON_EXPRESSION=0 20 * * *
+      - AUTO_REBOOT_WARN_MINUTES=5
+      - BACKUP_ENABLED=true
+
+      # --- Discord ---
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - DISCORD_PLAYER_JOIN_MESSAGE_ENABLED=true
+      - DISCORD_PLAYER_LEAVE_MESSAGE_ENABLED=true
+    volumes:
+      - ./palworld:/palworld/

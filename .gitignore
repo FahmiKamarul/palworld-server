@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Server data, saves and backups (huge, and specific to this machine)
+palworld/
+*.zip
+*.tar.gz
+
+# Migration tool is cloned on demand by scripts/fix-host-save.sh
+migration-tool/
+
+# AI agent instruction files — never commit
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.claude/
+.cursorrules
+.cursor/
+.github/copilot-instructions.md
+.windsurfrules
