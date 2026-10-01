@@ -81,7 +81,7 @@ Run from the repo folder (`cd ~/palworld-docker`).
 | Broadcast a message | `sudo docker exec palworld-server rest-cli announce '{"message":"Restarting in 5 min"}'` |
 | Save the world now | `sudo docker exec palworld-server rest-cli save` |
 | Make a backup now | `sudo docker exec palworld-server backup` |
-| Restore a backup (interactive) | `sudo docker exec -it palworld-server restore` |
+| Restore a backup | `sudo docker exec -it palworld-server restore` → pick a number → `y`, then `sudo docker compose restart` |
 | Status | `sudo docker ps` |
 
 **Changing settings:** edit `compose.yaml` (all options:
@@ -118,7 +118,7 @@ Zip that folder, get it onto the VM (e.g. browser SSH window → ⚙ → *Upload
 ./scripts/import-save.sh ~/world_save.zip     # or a path to the world folder
 ```
 
-This stops the server, backs up current saves to `palworld/backups/pre-import-*.tar.gz`, copies the world
+This stops the server, backs up current saves to `palworld/backups/palworld-save-*_before-import.tar.gz`, copies the world
 in, renames `WorldOption.sav`, sets `DedicatedServerName` in `GameUserSettings.ini` (that is what decides
 which world loads — if it doesn't match the folder name, the server silently creates a new world), fixes
 permissions and starts the server.
@@ -158,7 +158,7 @@ here) into `migration-tool/` and installs its dependencies the first time.
    ```bash
    ./scripts/fix-host-save.sh B63A4013000000000000000000000000
    ```
-   It stops the server, backs up the world to `palworld/backups/pre-hostfix-*.tar.gz`, moves the old
+   It stops the server, backs up the saves to `palworld/backups/palworld-save-*_before-hostfix.tar.gz`, moves the old
    character onto the new ID (with `--guild-fix`), fixes permissions and starts the server.
 6. The host joins — old character, Pals and guild are back.
 
@@ -172,7 +172,8 @@ here) into `migration-tool/` and installs its dependencies the first time.
 - Map discovery is stored per player on their own PC: in
   `%LOCALAPPDATA%\Pal\Saved\SaveGames\<SteamID>\`, copy `LocalData.sav` from the old world folder into the
   new server world folder (after connecting to the server once, game closed).
-- Something went wrong: the script prints the exact restore command; backups are in `palworld/backups/`.
+- Something went wrong: the script prints the exact restore command. Or use the normal restore
+  (`sudo docker exec -it palworld-server restore`) and pick the `_before-hostfix` backup.
 
 **Other ID swaps:** to move any character from one ID to another (e.g. a player changed Steam account):
 `./scripts/fix-host-save.sh <NEW_ID> <OLD_ID>`.
@@ -192,8 +193,8 @@ The image runs its own scheduler — nothing to install on the VM. Times are UTC
 | `DELETE_OLD_BACKUPS` / `OLD_BACKUP_DAYS` | not set | Add `DELETE_OLD_BACKUPS=true` and `OLD_BACKUP_DAYS=30` to auto-delete old backups |
 | `AUTO_REBOOT_ENABLED` | `true` | Scheduled restart (keeps memory usage down) |
 | `AUTO_REBOOT_CRON_EXPRESSION` | `0 20 * * *` | Daily 20:00 UTC (04:00 Malaysia time) |
-| `AUTO_REBOOT_WARN_MINUTES` | `5` | In-game warning before restart |
-| `AUTO_REBOOT_EVEN_IF_PLAYERS_ONLINE` | default `false` | Skip the restart if people are playing |
+| `AUTO_REBOOT_EVEN_IF_PLAYERS_ONLINE` | default `false` | `false`: if anyone is online at restart time, that day's restart is **skipped**. `true`: restart anyway, after the warning below |
+| `AUTO_REBOOT_WARN_MINUTES` | `5` | In-game countdown before the restart — only used when players are online (so only with the setting above `true`) |
 | `AUTO_UPDATE_ENABLED` / `AUTO_UPDATE_CRON_EXPRESSION` | not set | Update the game on a schedule (`UPDATE_ON_BOOT=true` already updates on every restart) |
 
 Cron format: `minute hour day-of-month month day-of-week` — e.g. `0 */6 * * *` = every 6 hours.
@@ -236,15 +237,20 @@ One-time setup with [rclone](https://rclone.org):
    ```
 3. `sudo docker compose up -d`
 
-Enabled in `compose.yaml`: player join and leave messages. Other messages you can turn on by adding to
-`compose.yaml` (each `=true`):
+Once the webhook is set, **every message type below is on by default** (the image's defaults). To turn one
+off, add it to `compose.yaml` with `=false`, e.g. `- DISCORD_PRE_BACKUP_MESSAGE_ENABLED=false`.
 
 | Variable | Message |
 |---|---|
-| `DISCORD_PRE_START_MESSAGE_ENABLED` | Server starting |
+| `DISCORD_PLAYER_JOIN_MESSAGE_ENABLED` / `DISCORD_PLAYER_LEAVE_MESSAGE_ENABLED` | Player joined / left |
+| `DISCORD_PRE_START_MESSAGE_ENABLED` | Server has been started |
 | `DISCORD_PRE_SHUTDOWN_MESSAGE_ENABLED` / `DISCORD_POST_SHUTDOWN_MESSAGE_ENABLED` | Shutting down / shut down |
-| `DISCORD_PRE_UPDATE_BOOT_MESSAGE_ENABLED` / `DISCORD_POST_UPDATE_BOOT_MESSAGE_ENABLED` | Updating / updated |
-| `DISCORD_PRE_BACKUP_MESSAGE_ENABLED` / `DISCORD_POST_BACKUP_MESSAGE_ENABLED` | Backup starting / done |
+| `DISCORD_PRE_UPDATE_BOOT_MESSAGE_ENABLED` / `DISCORD_POST_UPDATE_BOOT_MESSAGE_ENABLED` | Updating / update complete (every start, because `UPDATE_ON_BOOT=true`) |
+| `DISCORD_PRE_BACKUP_MESSAGE_ENABLED` / `DISCORD_POST_BACKUP_MESSAGE_ENABLED` | Backup starting / done (daily) |
+| `DISCORD_PRE_BACKUP_DELETE_MESSAGE_ENABLED` / `DISCORD_POST_BACKUP_DELETE_MESSAGE_ENABLED` / `DISCORD_ERR_BACKUP_DELETE_MESSAGE_ENABLED` | Old-backup cleanup (only if `DELETE_OLD_BACKUPS=true`) |
+
+With the daily backup and daily restart, that is about 5 messages a day even when nobody plays (backup starting/done, then updating/update complete/started after the restart). If that's
+too noisy, turning off the backup and update messages leaves start/shutdown and join/leave.
 
 Custom text: e.g. `DISCORD_PLAYER_JOIN_MESSAGE=player_name joined!`. To send a message type to a different
 channel, set `DISCORD_<TYPE>_URL` (e.g. `DISCORD_PLAYER_JOIN_MESSAGE_URL`). Leave `DISCORD_WEBHOOK_URL`

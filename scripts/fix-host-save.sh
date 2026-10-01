@@ -89,9 +89,11 @@ STAMP=$(date +%Y-%m-%d_%H-%M-%S)
 echo ">> Stopping server..."
 sudo docker compose down
 
-echo ">> Backing up world to palworld/backups/pre-hostfix-$STAMP.tar.gz"
+# Same format as the container's own backups, so `restore` can use it.
+BACKUP="palworld/backups/palworld-save-${STAMP}_before-hostfix.tar.gz"
+echo ">> Backing up saves to $BACKUP"
 sudo mkdir -p palworld/backups
-sudo tar -czf "palworld/backups/pre-hostfix-$STAMP.tar.gz" -C "$SAVES" "$WORLD_ID"
+sudo tar -czf "$BACKUP" -C palworld/Pal --exclude backup Saved/
 
 # The tool runs as you, so take ownership while it works, then give it back to the container.
 sudo chown -R "$(id -u):$(id -g)" "$WORLD"
@@ -101,7 +103,7 @@ echo ">> Moving character $OLD_ID -> $NEW_ID (with guild fix)..."
 if ! "$TOOL/.venv/bin/python" "$TOOL/fix_host_save.py" "$WORLD" "$NEW_ID" "$OLD_ID" --guild-fix; then
   echo
   echo "!! Fix failed. Server left STOPPED. To undo any partial changes:"
-  echo "   sudo rm -rf $WORLD && sudo tar -xzf palworld/backups/pre-hostfix-$STAMP.tar.gz -C $SAVES"
+  echo "   sudo rm -rf palworld/Pal/Saved && sudo tar -xzf $BACKUP -C palworld/Pal"
   echo "   sudo chown -R 1000:1000 palworld && sudo docker compose up -d"
   exit 1
 fi

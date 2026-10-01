@@ -46,11 +46,14 @@ echo ">> Importing world $WORLD_ID"
 echo ">> Stopping server..."
 sudo docker compose down
 
-sudo mkdir -p "$SAVES" palworld/backups
-if [ -n "$(sudo ls -A "$SAVES")" ]; then
-  echo ">> Backing up current saves to palworld/backups/pre-import-$STAMP.tar.gz"
-  sudo tar -czf "palworld/backups/pre-import-$STAMP.tar.gz" -C "$SAVES" .
+if sudo test -d palworld/Pal/Saved; then
+  # Same format as the container's own backups, so `restore` can use it.
+  BACKUP="palworld/backups/palworld-save-${STAMP}_before-import.tar.gz"
+  echo ">> Backing up current saves to $BACKUP"
+  sudo mkdir -p palworld/backups
+  sudo tar -czf "$BACKUP" -C palworld/Pal --exclude backup Saved/
 fi
+sudo mkdir -p "$SAVES"
 if sudo test -d "$SAVES/$WORLD_ID"; then
   sudo mv "$SAVES/$WORLD_ID" "$SAVES/$WORLD_ID.old-$STAMP"
 fi
